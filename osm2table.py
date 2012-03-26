@@ -13,7 +13,8 @@ SPECIAL_COLUMN_OSM_TYPE = 'osm_type'
 
 class OSMObject:
     def __init__(self, type=None, id=None, attributes={}, timestamp=None,
-        user=None, uid=None, version=None, changeset=None, visible=None):
+        user=None, uid=None, version=None, changeset=None, visible=None,
+        action=None):
         self.type = type
         self.id = id
         self.attributes = attributes
@@ -23,6 +24,7 @@ class OSMObject:
         self.version = version
         self.changeset = changeset
         self.visible = visible
+        self.action = action
         self.lat = None
         self.lon = None
 
@@ -93,7 +95,7 @@ class Handler(ContentHandler):
         if name in self.object_nodes:
             self.obj = OSMObject(name, long(attrs['id']), {}, attrs.get('timestamp'),
                 attrs.get('user'), attrs.get('uid'), attrs.get('version'),
-                attrs.get('changeset'), attrs.get('visible'))
+                attrs.get('changeset'), attrs.get('visible'), attrs.get('action'))
             if name == "node":
                 self.obj.lat = attrs['lat']
                 self.obj.lon = attrs['lon']
