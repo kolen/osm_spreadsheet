@@ -3,6 +3,34 @@
 import sys
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
+import sqlite3
+import cPickle as pickle
+
+class OSMAttributesStorage:
+    def __init__(self):
+        self.conn = sqlite3.connect(":memory:")
+        self.conn.text_factory = str # we use only blobs and byte strings for osm_type
+        c = self.conn.cursor()
+        c.execute("""
+            create table attributes (
+                osm_type text,
+                osm_id integer,
+                attributes blob,
+                UNIQUE(osm_type, osm_id)
+            )
+            """)
+
+    def add(self, osm_type, osm_id, attributes):
+        c = self.conn.cursor()
+        c.execute("insert into attributes (osm_type, osm_id, attributes) values (?, ?, ?)",
+            (osm_type, osm_id, pickle.dumps(attributes)))
+
+    def get(self, osm_type, osm_id):
+        c = self.conn.cursor()
+        c.execute("select attributes from attributes where osm_type=? and osm_id=?", (osm_type, osm_id))
+        row = cur.fetchone()
+        if row:
+            return pickle.loads(row[0])
 
 class ColumnDetector:
     def __init__(self):
@@ -20,14 +48,7 @@ class ColumnDetector:
     def add_relation(self, id, attrs, members):
         self.add_object(attrs)
 
-class Outputter:
-    def __init__(self, columns):
-        print "\t".join(["osm_id", "osm_type"]+[c.encode('utf-8') for c in columns])
-        self.columns = columns
-
-    def add_object(self, attrs, id, type):
-        print "\t".join([str(id), type] + [attrs.get(col, '').encode('utf-8') for col in self.columns])
-
+class GenericOutputter:
     def add_node(self, id, attrs, lat, lon):
         self.add_object(attrs, id, 'node')
 
@@ -36,6 +57,21 @@ class Outputter:
 
     def add_relation(self, id, attrs, members):
         self.add_object(attrs, id, 'relation')
+
+class Outputter(GenericOutputter):
+    def __init__(self, columns):
+        print "\t".join(["osm_id", "osm_type"]+[c.encode('utf-8') for c in columns])
+        self.columns = columns
+
+    def add_object(self, attrs, id, type):
+        print "\t".join([str(id), type] + [attrs.get(col, '').encode('utf-8') for col in self.columns])
+
+class OSMAttributesStorageOutputter(GenericOutputter):
+    def __init__(self, storage):
+        self.storage = storage
+
+    def add_object(self, attrs, id, type):
+        self.storage.add(type, id, attrs)
 
 class Handler(ContentHandler):
     def __init__(self, store):
@@ -81,4 +117,13 @@ def load(filename):
     p.setContentHandler(h)
     p.parse(filename)
 
-load(sys.argv[1])
+def load_into_storage(filename, storage):
+    p = make_parser()
+    outputter = OSMAttributesStorageOutputter(storage)
+    h = Handler(outputter)
+    p.setContentHandler(h)
+    p.parse(filename)
+
+#load(sys.argv[1])
+s = OSMAttributesStorage()
+load_into_storage(sys.argv[1], s)
