@@ -130,7 +130,7 @@ class DiffOutputter(Outputter):
              name,
              u" ".join(u"%s=%s" % (unicode(key), quoteattr(unicode(value)))
                     for key, value in attrs.iteritems() if value is not None),
-             u'/' if closed else u''
+             u' /' if closed else u''
             )).encode('utf-8'))
 
     def add(self, obj):
