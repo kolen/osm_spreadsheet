@@ -194,7 +194,7 @@ def load_tsv_into_storage(filename, storage):
     columns = f.readline().rstrip('\n').decode('utf-8').split("\t")
     for line in f:
         cells = line.rstrip('\n').decode('utf-8').split("\t")
-        record = dict(zip(columns, cells))
+        record = dict([cc for cc in zip(columns, cells) if cc[1] != ''])
         osm_type = record.pop(SPECIAL_COLUMN_OSM_TYPE)
         osm_id = record.pop(SPECIAL_COLUMN_OSM_ID)
 
