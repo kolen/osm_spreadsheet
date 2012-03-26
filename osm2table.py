@@ -27,6 +27,8 @@ class OSMObject:
         self.action = action
         self.lat = None
         self.lon = None
+        self.nodes=[]
+        self.members=[]
 
     def __unicode__(self):
         return "<osm object %s %d %s>" % (self.type, self.id, self.attributes)
@@ -102,9 +104,9 @@ class Handler(ContentHandler):
         elif name == "tag":
             self.obj.attributes[attrs['k']] = attrs['v']
         elif name == "nd":
-            pass
+            self.obj.nodes.append(attrs['ref'])
         elif name == "member":
-            pass
+            self.obj.members.append((attrs['type'], attrs['ref'], attrs['role']))
 
     def endElement(self, name):
         if name in self.object_nodes:
@@ -141,6 +143,7 @@ class DiffOutputter(Outputter):
             attrs_to_output = obj.attributes
             changed = False
 
+        simple_tag = (not attrs_to_output) and (not obj.nodes) and (not obj.members)
         self._output_xml_element(obj.type, {
                 'id': obj.id,
                 'timestamp': obj.timestamp,
@@ -152,10 +155,20 @@ class DiffOutputter(Outputter):
                 'lat': obj.lat,
                 'lon': obj.lon,
                 'action': 'modify' if changed else obj.action
-            }, not attrs_to_output, 1) #close if no attributes
-        if attrs_to_output:
-            for key, value in attrs_to_output.iteritems():
-                self._output_xml_element('tag', {'k': key, 'v': value}, True, 2)
+            }, simple_tag, 1)
+
+        for node in obj.nodes:
+            self._output_xml_element('nd', {'ref': node}, True, 2)
+        for m_type, m_id, m_role in obj.members:
+            self._output_xml_element('member', {
+                'type': m_type,
+                'ref': m_id,
+                'role': m_role
+            })
+        for key, value in attrs_to_output.iteritems():
+            self._output_xml_element('tag', {'k': key, 'v': value}, True, 2)
+
+        if not simple_tag:
             self.outfile.write(" </%s>\n" % obj.type)
 
     def finish(self):
