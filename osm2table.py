@@ -133,15 +133,20 @@ class DiffOutputter(Outputter):
              u' /' if closed else u''
             )).encode('utf-8'))
 
-    def add(self, obj):
-        changed_attrs = self.storage.get(obj.type, obj.id)
+    def _apply_changes(self, attributes, spreadsheet_record):
+        new = dict(attributes)
+        new.update(spreadsheet_record)
+        return dict((k,v) for k,v in new.iteritems() if v.strip() != '')
 
-        if changed_attrs and changed_attrs != obj.attributes:
-            attrs_to_output = changed_attrs
-            changed = True
-        else:
-            attrs_to_output = obj.attributes
-            changed = False
+    def add(self, obj):
+        attrs_to_output = obj.attributes
+        changed = False
+        spreadsheet_record = self.storage.get(obj.type, obj.id)
+        if spreadsheet_record:
+            changed_attrs = self._apply_changes(obj.attributes, spreadsheet_record)
+            if changed_attrs != obj.attributes:
+                attrs_to_output = changed_attrs
+                changed = True
 
         simple_tag = (not attrs_to_output) and (not obj.nodes) and (not obj.members)
         self._output_xml_element(obj.type, {
@@ -210,7 +215,7 @@ def load_tsv_into_storage(filename, storage):
     columns = f.readline().rstrip('\n').decode('utf-8').split("\t")
     for line in f:
         cells = line.rstrip('\n').decode('utf-8').split("\t")
-        record = dict([cc for cc in zip(columns, cells) if cc[1] != ''])
+        record = dict(zip(columns, cells))
         osm_type = record.pop(SPECIAL_COLUMN_OSM_TYPE)
         osm_id = record.pop(SPECIAL_COLUMN_OSM_ID)
 
