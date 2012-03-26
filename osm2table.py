@@ -151,9 +151,10 @@ class DiffOutputter(Outputter):
                 'changeset': obj.changeset,
                 'lat': obj.lat,
                 'lon': obj.lon,
-            }, not obj.attributes, 1) #close if no attributes
-        if obj.attributes:
-            for key, value in obj.attributes.iteritems():
+                'action': 'modify' if changed else obj.action
+            }, not attrs_to_output, 1) #close if no attributes
+        if attrs_to_output:
+            for key, value in attrs_to_output.iteritems():
                 self._output_xml_element('tag', {'k': key, 'v': value}, True, 2)
             self.outfile.write(" </%s>\n" % obj.type)
 
