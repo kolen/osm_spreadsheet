@@ -222,6 +222,21 @@ def load_tsv_into_storage(filename, storage):
 
         storage.add(osm_type, osm_id, record)
 
+def main_export(args):
+    pass
+
+def main_import(args):
+    s = OSMAttributesStorage()
+    load_tsv_into_storage(args.tsv_file, s)
+
+    outputter=DiffOutputter(s, args.output)
+
+    p = make_parser()
+    h = Handler(outputter)
+    p.setContentHandler(h)
+    p.parse(args.osm_file)
+    outputter.finish()
+
 def main():
     parser = argparse.ArgumentParser(description='Tool to modify tags of'
         'openstreetmap objects using spreadsheet files')
@@ -258,10 +273,16 @@ def main():
         help=".tsv file with tag changes to apply")
     parser_import.add_argument("--output", "-o", nargs=1, metavar='OSM_FILE',
         help="output osm xml file - josm file format (stdout by default) - see "
-        "http://wiki.openstreetmap.org/wiki/JOSM_file_format")
+        "http://wiki.openstreetmap.org/wiki/JOSM_file_format", default=stdout)
 
     args = parser.parse_args()
+
     print args
+
+    if args.action == 'import':
+        return main_import(args)
+    elif args.action == 'export':
+        return main_export(args)
 
 if __name__ == "__main__":
     main()
