@@ -202,13 +202,12 @@ def load_xml_into_storage(filename, storage):
     p.setContentHandler(h)
     p.parse(filename)
 
-def load_tsv_into_storage(filename, storage):
+def load_tsv_into_storage(file, storage):
     """
-    Load TSV file with filename filename into attribute storage storage.
+    Load TSV file into attribute storage storage.
     """
-    f = open(filename)
-    columns = f.readline().rstrip('\n').decode('utf-8').split("\t")
-    for line in f:
+    columns = file.readline().rstrip('\n').decode('utf-8').split("\t")
+    for line in file:
         cells = line.rstrip('\n').decode('utf-8').split("\t")
         record = dict(zip(columns, cells))
         osm_type = record.pop(SPECIAL_COLUMN_OSM_TYPE)
@@ -288,7 +287,7 @@ def main():
         help="osm xml input file (original to apply changes)")
     parser_import.add_argument("tsv_file", type=argparse.FileType('r'),
         help=".tsv file with tag changes to apply")
-    parser_import.add_argument("--output", "-o", nargs=1, metavar='OSM_FILE',
+    parser_import.add_argument("--output", "-o", metavar='OSM_FILE',
         help="output osm xml file - josm file format (stdout by default) - see "
         "http://wiki.openstreetmap.org/wiki/JOSM_file_format",
         type=argparse.FileType('w'), default=stdout)
