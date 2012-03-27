@@ -3,10 +3,10 @@
 import sys
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
+from xml.sax.saxutils import quoteattr
 import sqlite3
 import cPickle as pickle
 from sys import stdout
-from xml.sax.saxutils import quoteattr
 import argparse
 
 SPECIAL_COLUMN_OSM_ID   = 'osm_id'
@@ -71,14 +71,25 @@ class ColumnDetector(Outputter):
         self.columns |= set(object.attributes.keys())
 
 class TSVOutputter(Outputter):
-    def __init__(self, columns):
-        print "\t".join([SPECIAL_COLUMN_OSM_TYPE, SPECIAL_COLUMN_OSM_ID]+[c.encode('utf-8') for c in columns])
+    def __init__(self, columns, file):
+        file.write("\t".join(
+            [SPECIAL_COLUMN_OSM_TYPE, SPECIAL_COLUMN_OSM_ID]
+            +[c.encode('utf-8') for c in columns]) + "\n")
         self.columns = columns
+        self.file = file
+        self.types_allowed = set(('node', 'way', 'relation'))
+        self.skip_empty = False
+
+    def set_types_allowed(self, types):
+        self.types_allowed = set(types)
+
+    def set_skip_empty(self, skip_empty=True):
+        self.skip_empty = skip_empty
 
     def add(self, obj):
-        print "\t".join([obj.type, str(obj.id)] + [
+        self.file.write("\t".join([obj.type, str(obj.id)] + [
             obj.attributes.get(col, '').encode('utf-8')
-            for col in self.columns])
+            for col in self.columns]) + "\n")
 
 class OSMAttributesStorageOutputter(Outputter):
     def __init__(self, storage):
@@ -180,23 +191,6 @@ class DiffOutputter(Outputter):
     def finish(self):
         self.outfile.write("</osm>")
 
-def xml_to_spreadsheet(filename):
-    """
-    Load osm data from xml. Return (nodes, ways, relations) dicts (id->object).
-    """
-
-    coldet = ColumnDetector()
-    p = make_parser()
-    h = Handler(coldet)
-    p.setContentHandler(h)
-    p.parse(filename)
-
-    outputter = TSVOutputter(list(coldet.columns))
-    p = make_parser()
-    h = Handler(outputter)
-    p.setContentHandler(h)
-    p.parse(filename)
-
 def load_xml_into_storage(filename, storage):
     """
     Load attributes of all OSM objects in .osm xml file with filename filename
@@ -223,7 +217,28 @@ def load_tsv_into_storage(filename, storage):
         storage.add(osm_type, osm_id, record)
 
 def main_export(args):
-    pass
+    if args.columns is None:
+        coldet = ColumnDetector()
+        p = make_parser()
+        h = Handler(coldet)
+        p.setContentHandler(h)
+        p.parse(args.osm_file)
+        columns = coldet.columns
+    else:
+        columns = args.columns
+
+    outputter = TSVOutputter(list(columns), args.output)
+
+    if args.types:
+        outputter.set_types_allowed(args.types)
+
+    if args.skip_empty:
+        outputter.set_skip_empty()
+
+    p = make_parser()
+    h = Handler(outputter)
+    p.setContentHandler(h)
+    p.parse(args.osm_file)
 
 def main_import(args):
     s = OSMAttributesStorage()
@@ -246,9 +261,11 @@ def main():
         help='export osm xml file to .tsv spreadsheet',
         description="Export tags of objects in openstreetmap osm xml file to "
         ".tsv spreadsheet")
-    parser_export.add_argument("osm_file", help="osm xml input file")
-    parser_export.add_argument("--output", "-o", nargs=1, metavar='TSV_FILE',
-        help="output .tsv file (stdout by default)")
+    parser_export.add_argument("osm_file", help="osm xml input file",
+        type=argparse.FileType('r'))
+    parser_export.add_argument("--output", "-o", metavar='TSV_FILE',
+        help="output .tsv file (stdout by default)",
+        type=argparse.FileType('w'), default=stdout)
     parser_export.add_argument("--columns", "-c", nargs='*', metavar='COLUMN',
         help="Tag keys to output as columns (by default all tag keys found in "
             "osm file will be outputted)")
@@ -267,17 +284,16 @@ def main():
         "(http://wiki.openstreetmap.org/wiki/JOSM_file_format) "
         "from original osm dataset and tags imported from .tsv spreadsheet file"
         )
-    parser_import.add_argument("osm_file",
+    parser_import.add_argument("osm_file", type=argparse.FileType('r'),
         help="osm xml input file (original to apply changes)")
-    parser_import.add_argument("tsv_file",
+    parser_import.add_argument("tsv_file", type=argparse.FileType('r'),
         help=".tsv file with tag changes to apply")
     parser_import.add_argument("--output", "-o", nargs=1, metavar='OSM_FILE',
         help="output osm xml file - josm file format (stdout by default) - see "
-        "http://wiki.openstreetmap.org/wiki/JOSM_file_format", default=stdout)
+        "http://wiki.openstreetmap.org/wiki/JOSM_file_format",
+        type=argparse.FileType('w'), default=stdout)
 
     args = parser.parse_args()
-
-    print args
 
     if args.action == 'import':
         return main_import(args)
@@ -286,15 +302,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-#load(sys.argv[1])
-# s = OSMAttributesStorage()
-# load_tsv_into_storage(sys.argv[1], s)
-
-# outputter=DiffOutputter(s)
-
-# p = make_parser()
-# h = Handler(outputter)
-# p.setContentHandler(h)
-# p.parse(sys.argv[2])
-# outputter.finish()
