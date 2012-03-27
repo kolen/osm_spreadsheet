@@ -267,7 +267,9 @@ def main():
         type=argparse.FileType('w'), default=stdout)
     parser_export.add_argument("--columns", "-c", nargs='*', metavar='COLUMN',
         help="Tag keys to output as columns (by default all tag keys found in "
-            "osm file will be outputted)")
+            "osm file will be outputted)\n"
+            "Note that if this option is not specified and all columns is "
+            "outputted, input file should be seekable (i.e. not stdin)")
     parser_export.add_argument("--skip-empty", "-e", action="store_true",
         help="Do not output records that have all columns except osm id and "
         "osm type empty")
