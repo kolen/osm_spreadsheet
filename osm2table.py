@@ -31,7 +31,7 @@ class OSMObject:
         self.nodes=[]
         self.members=[]
 
-    def __unicode__(self):
+    def __str__(self):
         return "<osm object %s %d %s>" % (self.type, self.id, self.attributes)
 
 class Outputter:
