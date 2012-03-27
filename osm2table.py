@@ -223,6 +223,7 @@ def main_export(args):
         p.setContentHandler(h)
         p.parse(args.osm_file)
         columns = coldet.columns
+        args.osm_file.seek(0)
     else:
         columns = args.columns
 
