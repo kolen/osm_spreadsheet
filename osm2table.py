@@ -87,9 +87,16 @@ class TSVOutputter(Outputter):
         self.skip_empty = skip_empty
 
     def add(self, obj):
-        self.file.write("\t".join([obj.type, str(obj.id)] + [
-            obj.attributes.get(col, '').encode('utf-8')
-            for col in self.columns]) + "\n")
+        if obj.type not in self.types_allowed:
+            return
+
+        columns = [ obj.attributes.get(col, u'') for col in self.columns ]
+
+        if self.skip_empty and not any(columns):
+            return
+
+        self.file.write(("\t".join([obj.type, str(obj.id)] + columns) + "\n")
+            .encode('utf-8'))
 
 class OSMAttributesStorageOutputter(Outputter):
     def __init__(self, storage):
