@@ -7,6 +7,7 @@ import sqlite3
 import cPickle as pickle
 from sys import stdout
 from xml.sax.saxutils import quoteattr
+import argparse
 
 SPECIAL_COLUMN_OSM_ID   = 'osm_id'
 SPECIAL_COLUMN_OSM_TYPE = 'osm_type'
@@ -221,14 +222,58 @@ def load_tsv_into_storage(filename, storage):
 
         storage.add(osm_type, osm_id, record)
 
+def main():
+    parser = argparse.ArgumentParser(description='Tool to modify tags of'
+        'openstreetmap objects using spreadsheet files')
+    subparsers = parser.add_subparsers(help='sub-command help', dest='action')
+
+    parser_export = subparsers.add_parser('export',
+        help='export osm xml file to .tsv spreadsheet',
+        description="Export tags of objects in openstreetmap osm xml file to "
+        ".tsv spreadsheet")
+    parser_export.add_argument("osm_file", help="osm xml input file")
+    parser_export.add_argument("--output", "-o", nargs=1, metavar='TSV_FILE',
+        help="output .tsv file (stdout by default)")
+    parser_export.add_argument("--columns", "-c", nargs='*', metavar='COLUMN',
+        help="Tag keys to output as columns (by default all tag keys found in "
+            "osm file will be outputted)")
+    parser_export.add_argument("--skip-empty", "-e", action="store_true",
+        help="Do not output records that have all columns except osm id and "
+        "osm type empty")
+    parser_export.add_argument("--types", "-t", action='append',
+        choices=['node', 'way', 'relation'],
+        help="Output only specified types of openstreetmap objects. Specify "
+        "this parameter multiple times to include multiple types of objects, "
+        "i.e. -t way -t relation")
+
+    parser_import = subparsers.add_parser('import',
+        help='import .tsv spreadsheet data to osm xml file',
+        description="Create changefile in josm format "
+        "(http://wiki.openstreetmap.org/wiki/JOSM_file_format) "
+        "from original osm dataset and tags imported from .tsv spreadsheet file"
+        )
+    parser_import.add_argument("osm_file",
+        help="osm xml input file (original to apply changes)")
+    parser_import.add_argument("tsv_file",
+        help=".tsv file with tag changes to apply")
+    parser_import.add_argument("--output", "-o", nargs=1, metavar='OSM_FILE',
+        help="output osm xml file - josm file format (stdout by default) - see "
+        "http://wiki.openstreetmap.org/wiki/JOSM_file_format")
+
+    args = parser.parse_args()
+    print args
+
+if __name__ == "__main__":
+    main()
+
 #load(sys.argv[1])
-s = OSMAttributesStorage()
-load_tsv_into_storage(sys.argv[1], s)
+# s = OSMAttributesStorage()
+# load_tsv_into_storage(sys.argv[1], s)
 
-outputter=DiffOutputter(s)
+# outputter=DiffOutputter(s)
 
-p = make_parser()
-h = Handler(outputter)
-p.setContentHandler(h)
-p.parse(sys.argv[2])
-outputter.finish()
+# p = make_parser()
+# h = Handler(outputter)
+# p.setContentHandler(h)
+# p.parse(sys.argv[2])
+# outputter.finish()
