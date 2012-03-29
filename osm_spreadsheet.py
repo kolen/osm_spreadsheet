@@ -218,7 +218,7 @@ def load_tsv_into_storage(file, storage):
         cells = line.rstrip('\n').decode('utf-8').split("\t")
         record = dict(zip(columns, cells))
         osm_type = record.pop(SPECIAL_COLUMN_OSM_TYPE)
-        osm_id = record.pop(SPECIAL_COLUMN_OSM_ID)
+        osm_id = int(record.pop(SPECIAL_COLUMN_OSM_ID))
 
         storage.add(osm_type, osm_id, record)
 
