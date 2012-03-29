@@ -142,6 +142,10 @@ class DiffOutputter(Outputter):
         self.outfile = outfile
         self.outfile.write("<?xml version='1.0' encoding='UTF-8'?>\n"
             "<osm version='0.6' upload='true' generator='osm2table.py'>\n")
+        self.column_ignore_prefix = None
+
+    def setColumnIgnorePrefix(self, prefix):
+        self.column_ignore_prefix = prefix
 
     def _output_xml_element(self, name, attrs, closed=True, indent=0):
         self.outfile.write((u"%s<%s %s%s>\n" %
@@ -154,6 +158,9 @@ class DiffOutputter(Outputter):
 
     def _apply_changes(self, attributes, spreadsheet_record):
         new = dict(attributes)
+        if self.column_ignore_prefix:
+            spreadsheet_record = dict((k,v) for k,v in spreadsheet_record.iteritems()
+                if not k.startswith(self.column_ignore_prefix))
         new.update(spreadsheet_record)
         return dict((k,v) for k,v in new.iteritems() if v.strip() != '')
 
@@ -253,6 +260,9 @@ def main_import(args):
 
     outputter=DiffOutputter(s, args.output)
 
+    if args.ignore_prefix:
+        outputter.setColumnIgnorePrefix(args.ignore_prefix)
+
     p = make_parser()
     h = Handler(outputter)
     p.setContentHandler(h)
@@ -301,6 +311,8 @@ def main():
         help="output osm xml file - josm file format (stdout by default) - see "
         "http://wiki.openstreetmap.org/wiki/JOSM_file_format",
         type=argparse.FileType('w'), default=stdout)
+    parser_import.add_argument("--ignore-prefix", "-p", metavar='COL_PREFIX',
+        help="ignore columns with prefix COL_PREFIX")
 
     args = parser.parse_args()
 
