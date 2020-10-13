@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Convert .osm file to TSV file containing ids of each node/way/relation, type and all attributes
 
 import sys
@@ -5,7 +6,7 @@ from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 from xml.sax.saxutils import quoteattr
 import sqlite3
-import cPickle as pickle
+import pickle as pickle
 from sys import stdout
 import argparse
 
@@ -74,7 +75,7 @@ class TSVOutputter(Outputter):
     def __init__(self, columns, file):
         file.write("\t".join(
             [SPECIAL_COLUMN_OSM_TYPE, SPECIAL_COLUMN_OSM_ID]
-            +[c.encode('utf-8') for c in columns]) + "\n")
+            +[c for c in columns]) + "\n")
         self.columns = columns
         self.file = file
         self.types_allowed = set(('node', 'way', 'relation'))
@@ -90,13 +91,12 @@ class TSVOutputter(Outputter):
         if obj.type not in self.types_allowed:
             return
 
-        columns = [ obj.attributes.get(col, u'') for col in self.columns ]
+        columns = [ obj.attributes.get(col, '') for col in self.columns ]
 
         if self.skip_empty and not any(columns):
             return
 
-        self.file.write(("\t".join([obj.type, str(obj.id)] + columns) + "\n")
-            .encode('utf-8'))
+        self.file.write(("\t".join([obj.type, str(obj.id)] + columns) + "\n"))
 
 class OSMAttributesStorageOutputter(Outputter):
     def __init__(self, storage):
@@ -114,7 +114,7 @@ class Handler(ContentHandler):
 
     def startElement(self, name, attrs):
         if name in self.object_nodes:
-            self.obj = OSMObject(name, long(attrs['id']), {}, attrs.get('timestamp'),
+            self.obj = OSMObject(name, int(attrs['id']), {}, attrs.get('timestamp'),
                 attrs.get('user'), attrs.get('uid'), attrs.get('version'),
                 attrs.get('changeset'), attrs.get('visible'), attrs.get('action'))
             if name == "node":
@@ -148,21 +148,21 @@ class DiffOutputter(Outputter):
         self.column_ignore_prefix = prefix
 
     def _output_xml_element(self, name, attrs, closed=True, indent=0):
-        self.outfile.write((u"%s<%s %s%s>\n" %
-            (u" " * indent,
+        self.outfile.write(("%s<%s %s%s>\n" %
+            (" " * indent,
              name,
-             u" ".join(u"%s=%s" % (unicode(key), quoteattr(unicode(value)))
-                    for key, value in attrs.iteritems() if value is not None),
-             u' /' if closed else u''
-            )).encode('utf-8'))
+             " ".join("%s=%s" % (str(key), quoteattr(str(value)))
+                    for key, value in attrs.items() if value is not None),
+             ' /' if closed else ''
+            )))
 
     def _apply_changes(self, attributes, spreadsheet_record):
         new = dict(attributes)
         if self.column_ignore_prefix:
-            spreadsheet_record = dict((k,v) for k,v in spreadsheet_record.iteritems()
+            spreadsheet_record = dict((k,v) for k,v in spreadsheet_record.items()
                 if not k.startswith(self.column_ignore_prefix))
         new.update(spreadsheet_record)
-        return dict((k,v) for k,v in new.iteritems() if v.strip() != '')
+        return dict((k,v) for k,v in new.items() if v.strip() != '')
 
     def add(self, obj):
         attrs_to_output = obj.attributes
@@ -196,7 +196,7 @@ class DiffOutputter(Outputter):
                 'ref': m_id,
                 'role': m_role
             })
-        for key, value in attrs_to_output.iteritems():
+        for key, value in attrs_to_output.items():
             self._output_xml_element('tag', {'k': key, 'v': value}, True, 2)
 
         if not simple_tag:
@@ -220,10 +220,10 @@ def load_tsv_into_storage(file, storage):
     """
     Load TSV file into attribute storage storage.
     """
-    columns = file.readline().rstrip('\n').decode('utf-8').split("\t")
+    columns = file.readline().rstrip('\n').split("\t")
     for line in file:
-        cells = line.rstrip('\n').decode('utf-8').split("\t")
-        record = dict(zip(columns, cells))
+        cells = line.rstrip('\n').split("\t")
+        record = dict(list(zip(columns, cells)))
         osm_type = record.pop(SPECIAL_COLUMN_OSM_TYPE)
         osm_id = int(record.pop(SPECIAL_COLUMN_OSM_ID))
 
@@ -235,7 +235,7 @@ def main_export(args):
         p = make_parser()
         h = Handler(coldet)
         p.setContentHandler(h)
-        p.parse(args.osm_file)
+        p.parse(args.osm_file.name)
         columns = coldet.columns
         args.osm_file.seek(0)
     else:

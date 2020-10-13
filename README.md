@@ -38,8 +38,7 @@ Installation
 Currently there is no `setup.py`, so to install, just copy `osm_spreadsheet.py`
 somewhere.
 
-It requires *python 2.7*, maybe will work in previous versions with [argparse][]
-installed.
+It requires *python 3*.
 
 [argparse]: http://code.google.com/p/argparse/
 
